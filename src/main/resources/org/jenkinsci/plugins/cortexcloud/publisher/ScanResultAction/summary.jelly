@@ -1,0 +1,26 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Build-page summary box for a Cortex Cloud image scan.
+  Rendered on the build's main page (under "Build Artifacts" etc.).
+-->
+<j:jelly xmlns:j="jelly:core">
+  <div style="margin-top: 0.5em; margin-bottom: 0.5em;">
+    <b>Cortex Cloud Scan:</b>
+    <j:choose>
+      <j:when test="${it.passed}">
+        <span style="color: #1a7f37;">PASSED</span>
+      </j:when>
+      <j:otherwise>
+        <span style="color: #cf222e;">${it.statusLabel}</span>
+      </j:otherwise>
+    </j:choose>
+    &#160;&#8212;&#160;
+    <a href="${rootURL}/${it.run.url}${it.urlName}">${it.scanTarget}</a>
+    <j:if test="${it.hasResult()}">
+      &#160;(${it.vulnerabilityCount} vulnerabilities, ${it.complianceIssueCount} compliance issues)
+    </j:if>
+    <j:if test="${it.vulnerabilityCount > 0}">
+      &#160;[Critical: ${it.criticalCount}, High: ${it.highCount}, Medium: ${it.mediumCount}, Low: ${it.lowCount}]
+    </j:if>
+  </div>
+</j:jelly>

@@ -1,0 +1,55 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Build-step configuration form for "Scan container image with Cortex Cloud".
+  Field names must match the @DataBoundConstructor / @DataBoundSetter params.
+-->
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+
+  <f:entry title="Image" field="image"
+           description="Image reference to scan, e.g. myrepo/app:1.2.3. Supports environment variables like ${BUILD_NUMBER}.">
+    <f:textbox/>
+  </f:entry>
+
+  <f:advanced>
+    <f:entry title="Scan name" field="scanName"
+             description="Friendly name shown in the Cortex console. Defaults to the image reference.">
+      <f:textbox/>
+    </f:entry>
+
+    <f:entry title="Docker host" field="dockerHost"
+             description="Docker daemon socket, e.g. unix:///var/run/docker.sock or tcp://host:2376. Leave blank for the default.">
+      <f:textbox/>
+    </f:entry>
+
+    <f:entry title="Source" field="source"
+             description="Scan source reported to the tenant (maps to --source). Lets source-scoped tenant policies apply to Jenkins scans. Supports environment variables. Leave blank for the CLI default.">
+      <f:textbox/>
+    </f:entry>
+
+    <f:entry title="Upload mode" field="uploadMode"
+             description="Controls how much scan data is uploaded to and retained by the tenant (maps to --upload-mode). Supports environment variables. Leave blank for the CLI default.">
+      <f:textbox/>
+    </f:entry>
+
+    <f:entry title="Timeout (seconds)" field="timeout"
+             description="Maximum time to wait for the scan. 0 uses the CLI default.">
+      <f:number/>
+    </f:entry>
+
+    <f:entry title="Fail build on policy violation" field="failBuildOnPolicyViolation"
+             description="When checked (default), a policy violation or scan error fails the build.">
+      <f:checkbox default="true"/>
+    </f:entry>
+
+    <f:entry title="Fail build on severity" field="severityThreshold"
+             description="Fail the build if any vulnerability or compliance finding (malware / secrets) is at or above this severity, regardless of the tenant policy / CLI exit code. Requires JSON findings (default output). 'None' keeps exit-code-only gating.">
+      <f:select/>
+    </f:entry>
+
+    <f:entry title="Fail build if results can't be parsed" field="failOnUnparseableResults"
+             description="When checked (default) and a severity threshold is set, the build fails closed if the CLI produces no machine-readable findings to evaluate the threshold against. Uncheck to fall back to exit-code-only gating.">
+      <f:checkbox default="true"/>
+    </f:entry>
+  </f:advanced>
+
+</j:jelly>
