@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.jenkins-ci.plugins</groupId>
+    <artifactId>plugin</artifactId>
+    <version>6.2221.va_045130417c9</version>
+    <relativePath />
+  </parent>
+
+  <groupId>io.jenkins.plugins</groupId>
+  <artifactId>cortex-cloud</artifactId>
+  <version>${changelist}</version>
+  <packaging>hpi</packaging>
+
+  <name>Cortex Cloud</name>
+  <description>Jenkins plugin from Palo Alto Networks - Cortex Cloud. Provisions the Cortex Cloud CLI, adds a build step that scans Docker images for vulnerabilities, reports scan results in the Jenkins build UI, and exposes global configuration for the Cortex API (base URL, API key, and API key ID).</description>
+  <url>https://github.com/jenkinsci/cortex-cloud</url>
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>ScanOps</id>
+      <name>ScanOps-Team</name>
+      <email>dl-settinger-all@paloaltonetworks.com</email>
+      <organization>Palo Alto Networks</organization>
+      <organizationUrl>https://www.paloaltonetworks.com</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/jenkinsci/cortex-cloud.git</connection>
+    <developerConnection>scm:git:git@github.com:jenkinsci/cortex-cloud.git</developerConnection>
+    <tag>${scmTag}</tag>
+    <url>https://github.com/jenkinsci/cortex-cloud</url>
+  </scm>
+
+  <properties>
+    <!--
+      changelist drives the project version (see <version>${changelist}</version> above),
+      following the archetype / JEP-229 continuous-delivery convention. Override on release,
+      e.g. -Dset.changelist to produce an incremental version.
+    -->
+    <changelist>0.1.0</changelist>
+    <jenkins.baseline>2.479</jenkins.baseline>
+    <jenkins.version>${jenkins.baseline}.3</jenkins.version>
+
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!--
+      Enable the Spotless code-formatting gate. The Jenkins parent POM ships Spotless
+      but defaults spotless.check.skip=true (opt-in); set it to false so the check runs
+      and fails the build on formatting violations. Sources are kept formatted via
+      `mvn spotless:apply`.
+    -->
+    <spotless.check.skip>false</spotless.check.skip>
+
+    <!--
+      Enable the ban-junit4-imports enforcer rule. The Jenkins parent POM ships this
+      rule but defaults ban-junit4-imports.skip=true (opt-in); set it to false so the
+      build fails on JUnit 4 imports. Tests use JUnit 5 (JUnit Jupiter).
+    -->
+    <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Jenkins plugin BOM: bom-${jenkins.baseline}.x resolves to bom-2.479.x, matching the baseline above. -->
+      <dependency>
+        <groupId>io.jenkins.tools.bom</groupId>
+        <artifactId>bom-${jenkins.baseline}.x</artifactId>
+        <version>5054.v620b_5d2b_d5e6</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>2.10.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>matrix-project</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>structs</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.spotbugs</groupId>
+      <artifactId>spotbugs-annotations</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Test dependencies -->
+    <dependency>
+      <groupId>org.jenkins-ci.main</groupId>
+      <artifactId>jenkins-test-harness</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <repositories>
+    <repository>
+      <id>repo.jenkins-ci.org</id>
+      <url>https://repo.jenkins-ci.org/public/</url>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>repo.jenkins-ci.org</id>
+      <url>https://repo.jenkins-ci.org/public/</url>
+    </pluginRepository>
+  </pluginRepositories>
+
+</project>

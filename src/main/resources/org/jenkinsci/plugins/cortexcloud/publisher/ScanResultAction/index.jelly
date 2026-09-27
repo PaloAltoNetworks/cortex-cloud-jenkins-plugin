@@ -1,0 +1,135 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Full results page for a Cortex Cloud image scan.
+  Reached via the build's left-nav "Cortex Cloud Scan" link.
+-->
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+  <l:layout title="Cortex Cloud Scan">
+    <st:include it="${it.run}" page="sidepanel.jelly" optional="true"/>
+    <l:main-panel>
+      <h1>Cortex Cloud Scan</h1>
+
+      <table class="jenkins-table" style="margin-bottom: 1.5em;">
+        <tbody>
+          <tr>
+            <td><b>Target</b></td>
+            <td>${it.scanTarget}</td>
+          </tr>
+          <tr>
+            <td><b>Status</b></td>
+            <td>
+              <j:choose>
+                <j:when test="${it.passed}">
+                  <span style="color: #1a7f37; font-weight: bold;">PASSED</span>
+                </j:when>
+                <j:otherwise>
+                  <span style="color: #cf222e; font-weight: bold;">${it.statusLabel}</span>
+                </j:otherwise>
+              </j:choose>
+            </td>
+          </tr>
+          <tr>
+            <td><b>CLI exit code</b></td>
+            <td>${it.exitCode}</td>
+          </tr>
+          <j:if test="${!empty(it.consoleUrl)}">
+            <tr>
+              <td><b>Console</b></td>
+              <td><a href="${it.consoleUrl}" target="_blank" rel="noopener noreferrer">View in Cortex</a></td>
+            </tr>
+          </j:if>
+        </tbody>
+      </table>
+
+      <j:choose>
+        <j:when test="${it.hasResult()}">
+
+          <div style="margin-bottom: 1em;">
+            <b>Severity breakdown:</b>
+            <span style="color: #cf222e;">Critical ${it.criticalCount}</span> &#160;
+            <span style="color: #bc4c00;">High ${it.highCount}</span> &#160;
+            <span style="color: #9a6700;">Medium ${it.mediumCount}</span> &#160;
+            <span style="color: #57606a;">Low ${it.lowCount}</span>
+          </div>
+
+          <h2>Vulnerabilities (${it.vulnerabilityCount})</h2>
+          <j:choose>
+            <j:when test="${it.vulnerabilityCount > 0}">
+              <table class="jenkins-table sortable">
+                <thead>
+                  <tr>
+                    <th>CVE</th>
+                    <th>Severity</th>
+                    <th>CVSS</th>
+                    <th>Package</th>
+                    <th>Version</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <j:forEach var="v" items="${it.vulnerabilities}">
+                    <tr>
+                      <td>
+                        <j:choose>
+                          <j:when test="${v.validCve}">
+                            <a href="${v.link}" target="_blank" rel="noopener noreferrer">${v.cve}</a>
+                          </j:when>
+                          <j:otherwise>${v.cve}</j:otherwise>
+                        </j:choose>
+                      </td>
+                      <td>${v.severity}</td>
+                      <td>${v.cvss}</td>
+                      <td>${v.packageName}</td>
+                      <td>${v.packageVersion}</td>
+                      <td>${v.status}</td>
+                    </tr>
+                  </j:forEach>
+                </tbody>
+              </table>
+            </j:when>
+            <j:otherwise>
+              <p>No vulnerabilities reported.</p>
+            </j:otherwise>
+          </j:choose>
+
+          <h2>Compliance issues (${it.complianceIssueCount})</h2>
+          <j:choose>
+            <j:when test="${it.complianceIssueCount > 0}">
+              <table class="jenkins-table sortable">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Severity</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <j:forEach var="c" items="${it.complianceIssues}">
+                    <tr>
+                      <td>${c.title}</td>
+                      <td>${c.severity}</td>
+                      <td>${c.description}</td>
+                    </tr>
+                  </j:forEach>
+                </tbody>
+              </table>
+            </j:when>
+            <j:otherwise>
+              <p>No compliance issues reported.</p>
+            </j:otherwise>
+          </j:choose>
+
+        </j:when>
+        <j:otherwise>
+          <p>
+            The Cortex CLI did not emit machine-readable (JSON) results for this
+            scan, so a detailed findings table is not available. The build
+            pass/fail decision above is based on the CLI exit code. Review the
+            console log for the human-readable scan output, or open the scan in
+            the Cortex console.
+          </p>
+        </j:otherwise>
+      </j:choose>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

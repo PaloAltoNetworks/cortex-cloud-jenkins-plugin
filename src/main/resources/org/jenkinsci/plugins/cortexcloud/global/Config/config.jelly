@@ -1,0 +1,40 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Global system configuration for the Cortex Cloud plugin.
+  Rendered under Manage Jenkins -> System.
+-->
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+  <f:section title="Cortex Cloud">
+
+    <f:entry title="API base URL" field="apiBaseUrl"
+             description="Tenant API base URL, e.g. https://api-&lt;tenant&gt;.xdr.&lt;region&gt;.paloaltonetworks.com">
+      <f:textbox/>
+    </f:entry>
+
+    <f:entry title="API key" field="apiKey"
+             description="Cortex API key. Stored encrypted.">
+      <f:password/>
+    </f:entry>
+
+    <f:entry title="API key ID" field="apiKeyId"
+             description="Numeric API key ID (the x-xdr-auth-id value, e.g. 158).">
+      <f:textbox/>
+    </f:entry>
+
+    <f:advanced>
+      <f:entry title="CLI path (optional)" field="cliPath"
+               description="Absolute path to a pre-installed cortexcli binary on the agent. Leave blank to download and cache it automatically.">
+        <f:textbox/>
+      </f:entry>
+
+      <f:entry title="Debug logging" field="debug"
+               description="Emit verbose CLI output to the build log.">
+        <f:checkbox/>
+      </f:entry>
+    </f:advanced>
+
+    <f:validateButton title="Test Connection" progress="Testing..."
+                      method="testConnection"
+                      with="apiBaseUrl,apiKey,apiKeyId"/>
+  </f:section>
+</j:jelly>

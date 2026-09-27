@@ -1,0 +1,8 @@
+<?jelly escape-by-default='true'?>
+<div>
+  Scan container images during Jenkins builds using the Cortex CLI
+  (Cortex Cloud Runtime Security). This plugin replaces the Prisma Cloud
+  Compute (twistlock) Jenkins plugin, providing image vulnerability and
+  compliance scanning with configurable pass/fail gating and per-build
+  results reporting, for both freestyle and Pipeline jobs.
+</div>
