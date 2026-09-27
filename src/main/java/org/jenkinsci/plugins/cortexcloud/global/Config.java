@@ -35,7 +35,11 @@ public final class Config extends GlobalConfiguration {
     /** API key (secret). Stored encrypted. */
     private Secret apiKey;
 
-    /** API key ID - a small integer string mapped to the x-xdr-auth-id header. */
+    /**
+     * API key ID: the numeric identifier sent as the x-xdr-auth-id header.
+     * It identifies the key but is not the secret; the secret is {@link #apiKey}, stored as a Secret.
+     */
+    @SuppressWarnings("lgtm[jenkins/plaintext-storage]")
     private String apiKeyId;
 
     /**
@@ -134,6 +138,7 @@ public final class Config extends GlobalConfiguration {
     // Form validation (on-the-fly, as the user types in the config page).
     // ---------------------------------------------------------------------
 
+    @POST
     public FormValidation doCheckApiBaseUrl(@QueryParameter String value) {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
         return validateApiBaseUrl(value);
@@ -158,6 +163,7 @@ public final class Config extends GlobalConfiguration {
         }
     }
 
+    @POST
     public FormValidation doCheckApiKey(@QueryParameter String value) {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
         if (trimToNull(value) == null) {
@@ -166,6 +172,7 @@ public final class Config extends GlobalConfiguration {
         return FormValidation.ok();
     }
 
+    @POST
     public FormValidation doCheckApiKeyId(@QueryParameter String value) {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
         if (trimToNull(value) == null) {

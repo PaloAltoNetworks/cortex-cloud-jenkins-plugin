@@ -7,7 +7,7 @@
 
   <f:entry title="Image" field="image"
            description="Image reference to scan, e.g. myrepo/app:1.2.3. Supports environment variables like ${BUILD_NUMBER}.">
-    <f:textbox/>
+    <f:textbox checkMethod="post"/>
   </f:entry>
 
   <f:advanced>
@@ -18,7 +18,7 @@
 
     <f:entry title="Docker host" field="dockerHost"
              description="Docker daemon socket, e.g. unix:///var/run/docker.sock or tcp://host:2376. Leave blank for the default.">
-      <f:textbox/>
+      <f:textbox checkMethod="post"/>
     </f:entry>
 
     <f:entry title="Source" field="source"

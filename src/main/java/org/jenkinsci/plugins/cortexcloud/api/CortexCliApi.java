@@ -43,7 +43,13 @@ public class CortexCliApi {
     private static final int MAX_RESPONSE_BYTES = 256 * 1024;
 
     private final String baseUrl;
+
+    // Held in memory only for the lifetime of a single API call; this class is not
+    // Serializable and is never persisted, so these values are not written to disk.
+    @SuppressWarnings("lgtm[jenkins/plaintext-storage]")
     private final String apiKey;
+
+    @SuppressWarnings("lgtm[jenkins/plaintext-storage]")
     private final String apiKeyId;
 
     /**

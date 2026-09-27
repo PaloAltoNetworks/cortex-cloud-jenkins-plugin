@@ -13,9 +13,14 @@ import hudson.security.AccessDeniedException3;
 import hudson.util.FormValidation;
 import hudson.util.Secret;
 import java.io.File;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import jenkins.model.Jenkins;
+import org.htmlunit.FailingHttpStatusCodeException;
+import org.htmlunit.HttpMethod;
+import org.htmlunit.Page;
+import org.htmlunit.WebRequest;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
@@ -110,5 +115,21 @@ class ConfigTest {
             assertThrows(
                     AccessDeniedException3.class, () -> config.doTestConnection("https://x.example.com", "k", "1"));
         }
+    }
+
+    @Test
+    void checkApiKeyRequiresPost(JenkinsRule j) throws Exception {
+        JenkinsRule.WebClient wc = j.createWebClient();
+        String checkUrl = "descriptorByName/" + Config.class.getName() + "/checkApiKey?value=test";
+
+        // GET must be rejected with 405 Method Not Allowed
+        FailingHttpStatusCodeException ex =
+                assertThrows(FailingHttpStatusCodeException.class, () -> wc.goTo(checkUrl));
+        assertEquals(405, ex.getStatusCode());
+
+        // POST (with crumb handled automatically by WebClient) must succeed
+        WebRequest postRequest = new WebRequest(new URL(j.getURL() + checkUrl), HttpMethod.POST);
+        Page page = wc.getPage(postRequest);
+        assertEquals(200, page.getWebResponse().getStatusCode());
     }
 }

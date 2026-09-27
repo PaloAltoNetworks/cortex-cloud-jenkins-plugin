@@ -26,6 +26,7 @@ import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.verb.POST;
 
 /**
  * Build step that scans a container image with the Cortex CLI.
@@ -312,6 +313,7 @@ public class ImageBuildScanner extends AbstractBuildScanner {
             }
         }
 
+        @POST
         public FormValidation doCheckImage(@AncestorInPath Item item, @QueryParameter String value) {
             checkConfigurePermission(item);
             if (value == null || value.trim().isEmpty()) {
@@ -321,6 +323,7 @@ public class ImageBuildScanner extends AbstractBuildScanner {
         }
 
         /** Populates the "Fail build on severity" dropdown. */
+        @POST
         public ListBoxModel doFillSeverityThresholdItems(@AncestorInPath Item item) {
             ListBoxModel items = new ListBoxModel();
             if (item == null ? !Jenkins.get().hasPermission(Jenkins.ADMINISTER) : !item.hasPermission(Item.CONFIGURE)) {
@@ -335,6 +338,7 @@ public class ImageBuildScanner extends AbstractBuildScanner {
             return items;
         }
 
+        @POST
         public FormValidation doCheckDockerHost(@AncestorInPath Item item, @QueryParameter String value) {
             checkConfigurePermission(item);
             if (value == null || value.trim().isEmpty()) {
