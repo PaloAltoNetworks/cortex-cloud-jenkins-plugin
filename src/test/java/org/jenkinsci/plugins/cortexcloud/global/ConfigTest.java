@@ -123,8 +123,7 @@ class ConfigTest {
         String checkUrl = "descriptorByName/" + Config.class.getName() + "/checkApiKey?value=test";
 
         // GET must be rejected with 405 Method Not Allowed
-        FailingHttpStatusCodeException ex =
-                assertThrows(FailingHttpStatusCodeException.class, () -> wc.goTo(checkUrl));
+        FailingHttpStatusCodeException ex = assertThrows(FailingHttpStatusCodeException.class, () -> wc.goTo(checkUrl));
         assertEquals(405, ex.getStatusCode());
 
         // POST (with crumb handled automatically by WebClient) must succeed

@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.cortexcloud.publisher;
 
+import hudson.Util;
 import hudson.model.Run;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -40,7 +41,7 @@ public class ScanResultAction implements RunAction2, Serializable {
         this.exitCode = exitCode;
         this.passed = passed;
         this.result = result;
-        this.rawOutput = rawOutput == null ? "" : rawOutput;
+        this.rawOutput = Util.fixNull(rawOutput);
     }
 
     // ---- RunAction2 contract ----
@@ -82,7 +83,7 @@ public class ScanResultAction implements RunAction2, Serializable {
     // ---- View accessors ----
 
     public String getScanTarget() {
-        return scanTarget == null ? "" : scanTarget;
+        return Util.fixNull(scanTarget);
     }
 
     public int getExitCode() {

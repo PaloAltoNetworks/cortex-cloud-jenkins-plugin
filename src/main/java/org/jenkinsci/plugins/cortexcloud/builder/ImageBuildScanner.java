@@ -1,9 +1,11 @@
 package org.jenkinsci.plugins.cortexcloud.builder;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.AbortException;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
+import hudson.Util;
 import hudson.model.AbstractProject;
 import hudson.model.Item;
 import hudson.model.Run;
@@ -11,9 +13,7 @@ import hudson.model.TaskListener;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
-import hudson.util.ListBoxModel;
 import java.io.IOException;
-import javax.annotation.Nonnull;
 import jenkins.model.Jenkins;
 import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.cortexcloud.global.Config;
@@ -68,12 +68,12 @@ public class ImageBuildScanner extends AbstractBuildScanner {
     private String uploadMode;
 
     /**
-     * Plugin-side severity threshold for gating, as a Severity name (NONE, LOW,
-     * MEDIUM, HIGH, CRITICAL). When set above NONE, the build fails if any parsed
-     * vulnerability is at or above this severity - independent of the CLI exit
-     * code. Defaults to NONE (exit-code-only gating, matching the legacy plugin).
+     * Plugin-side severity threshold for gating (NONE, LOW, MEDIUM, HIGH, CRITICAL).
+     * When set above NONE, the build fails if any parsed vulnerability is at or
+     * above this severity - independent of the CLI exit code. Defaults to NONE
+     * (exit-code-only gating, matching the legacy plugin).
      */
-    private String severityThreshold = Severity.NONE.name();
+    private Severity severityThreshold = Severity.NONE;
 
     // Fields in config.jelly must match the parameter names in this constructor.
     @DataBoundConstructor
@@ -122,30 +122,30 @@ public class ImageBuildScanner extends AbstractBuildScanner {
         this.uploadMode = uploadMode;
     }
 
-    public String getSeverityThreshold() {
-        return severityThreshold == null ? Severity.NONE.name() : severityThreshold;
+    public Severity getSeverityThreshold() {
+        return severityThreshold == null ? Severity.NONE : severityThreshold;
     }
 
     @DataBoundSetter
-    public void setSeverityThreshold(String severityThreshold) {
+    public void setSeverityThreshold(Severity severityThreshold) {
         this.severityThreshold = severityThreshold;
     }
 
-    /** @return the parsed threshold, defaulting to Severity.NONE. */
+    /** @return the configured threshold, defaulting to Severity.NONE. */
     Severity resolveThreshold() {
-        return Severity.fromString(getSeverityThreshold());
+        return getSeverityThreshold();
     }
 
     @Override
     public void perform(
-            @Nonnull Run<?, ?> run,
-            @Nonnull FilePath workspace,
-            @Nonnull hudson.EnvVars env,
-            @Nonnull Launcher launcher,
-            @Nonnull TaskListener listener)
+            @NonNull Run<?, ?> run,
+            @NonNull FilePath workspace,
+            @NonNull hudson.EnvVars env,
+            @NonNull Launcher launcher,
+            @NonNull TaskListener listener)
             throws InterruptedException, IOException {
 
-        if (image == null || image.trim().isEmpty()) {
+        if (Util.fixEmptyAndTrim(image) == null) {
             abort("Cortex: image name is required");
         }
 
@@ -316,32 +316,16 @@ public class ImageBuildScanner extends AbstractBuildScanner {
         @POST
         public FormValidation doCheckImage(@AncestorInPath Item item, @QueryParameter String value) {
             checkConfigurePermission(item);
-            if (value == null || value.trim().isEmpty()) {
+            if (Util.fixEmptyAndTrim(value) == null) {
                 return FormValidation.error("Please set an image name");
             }
             return FormValidation.ok();
         }
 
-        /** Populates the "Fail build on severity" dropdown. */
-        @POST
-        public ListBoxModel doFillSeverityThresholdItems(@AncestorInPath Item item) {
-            ListBoxModel items = new ListBoxModel();
-            if (item == null ? !Jenkins.get().hasPermission(Jenkins.ADMINISTER) : !item.hasPermission(Item.CONFIGURE)) {
-                // Do not leak option metadata to callers without configure rights.
-                return items;
-            }
-            items.add("None (use CLI exit code only)", Severity.NONE.name());
-            items.add("Low or higher", Severity.LOW.name());
-            items.add("Medium or higher", Severity.MEDIUM.name());
-            items.add("High or higher", Severity.HIGH.name());
-            items.add("Critical only", Severity.CRITICAL.name());
-            return items;
-        }
-
         @POST
         public FormValidation doCheckDockerHost(@AncestorInPath Item item, @QueryParameter String value) {
             checkConfigurePermission(item);
-            if (value == null || value.trim().isEmpty()) {
+            if (Util.fixEmptyAndTrim(value) == null) {
                 return FormValidation.ok();
             }
             String v = value.trim();
@@ -361,7 +345,7 @@ public class ImageBuildScanner extends AbstractBuildScanner {
         }
 
         @Override
-        @Nonnull
+        @NonNull
         public String getDisplayName() {
             return "Scan container image with Cortex Cloud";
         }

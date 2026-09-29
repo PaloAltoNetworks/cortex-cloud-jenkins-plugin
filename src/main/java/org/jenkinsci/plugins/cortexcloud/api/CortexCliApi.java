@@ -2,14 +2,20 @@ package org.jenkinsci.plugins.cortexcloud.api;
 
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
+import hudson.ProxyConfiguration;
+import hudson.Util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import org.jenkinsci.plugins.cortexcloud.shared.CortexConstants;
 
 /**
@@ -25,9 +31,9 @@ import org.jenkinsci.plugins.cortexcloud.shared.CortexConstants;
  * - Authorization: <api key>
  * - x-xdr-auth-id: <api key id>
  *
- * Implemented with HttpURLConnection to avoid pulling in an HTTP client
- * dependency; this keeps the plugin classpath minimal and proxy-friendly (it
- * honours the JVM's standard proxy system properties).
+ * HTTP requests use {@link HttpClient} configured via
+ * {@link ProxyConfiguration#newHttpClientBuilder()} to honour the Jenkins
+ * global proxy configuration.
  */
 public class CortexCliApi {
 
@@ -43,6 +49,7 @@ public class CortexCliApi {
     private static final int MAX_RESPONSE_BYTES = 256 * 1024;
 
     private final String baseUrl;
+    private final HttpClient httpClient;
 
     // Held in memory only for the lifetime of a single API call; this class is not
     // Serializable and is never persisted, so these values are not written to disk.
@@ -58,9 +65,21 @@ public class CortexCliApi {
      * @param apiKeyId API key ID (maps to the x-xdr-auth-id header)
      */
     public CortexCliApi(String baseUrl, String apiKey, String apiKeyId) {
+        this(baseUrl, apiKey, apiKeyId, defaultHttpClient());
+    }
+
+    CortexCliApi(String baseUrl, String apiKey, String apiKeyId, HttpClient httpClient) {
         this.baseUrl = stripTrailingSlash(baseUrl);
         this.apiKey = apiKey;
         this.apiKeyId = apiKeyId;
+        this.httpClient = httpClient;
+    }
+
+    private static HttpClient defaultHttpClient() {
+        return ProxyConfiguration.newHttpClientBuilder()
+                .connectTimeout(Duration.ofMillis(CONNECT_TIMEOUT_MS))
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build();
     }
 
     /**
@@ -71,8 +90,8 @@ public class CortexCliApi {
      * @throws IOException if the request fails or the tenant rejects the credentials
      */
     public void testConnection() throws IOException {
-        DownloadLink link = getDownloadLink(currentOs(), currentArch());
-        if (link == null || isBlank(link.signedUrl)) {
+        DownloadLink link = getDownloadLink(CortexConstants.OS_LINUX, CortexConstants.ARCH_AMD64);
+        if (link == null || Util.fixEmptyAndTrim(link.signedUrl) == null) {
             throw new IOException("tenant did not return a download link (unexpected response)");
         }
     }
@@ -87,61 +106,54 @@ public class CortexCliApi {
      * @throws IOException on transport error or non-2xx response
      */
     public DownloadLink getDownloadLink(String os, String arch) throws IOException {
-        String url = baseUrl + CortexConstants.DOWNLOAD_LINK_PATH
+        String urlString = baseUrl + CortexConstants.DOWNLOAD_LINK_PATH
                 + "?" + CortexConstants.DOWNLOAD_PARAM_OS + "=" + enc(os)
                 + "&" + CortexConstants.DOWNLOAD_PARAM_ARCH + "=" + enc(arch);
 
-        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+        final URI uri;
         try {
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-            conn.setReadTimeout(READ_TIMEOUT_MS);
-            conn.setRequestProperty(CortexConstants.HEADER_AUTHORIZATION, apiKey);
-            conn.setRequestProperty(CortexConstants.HEADER_AUTH_ID, apiKeyId);
-            conn.setRequestProperty("Accept", "application/json");
+            uri = new URI(urlString);
+        } catch (URISyntaxException e) {
+            throw new IOException("Invalid URL: " + urlString, e);
+        }
 
-            int status = conn.getResponseCode();
+        HttpRequest req = ProxyConfiguration.newHttpRequestBuilder(uri)
+                .GET()
+                .timeout(Duration.ofMillis(READ_TIMEOUT_MS))
+                .header(CortexConstants.HEADER_AUTHORIZATION, apiKey)
+                .header(CortexConstants.HEADER_AUTH_ID, apiKeyId)
+                .header("Accept", "application/json")
+                .build();
+
+        final HttpResponse<InputStream> resp;
+        try {
+            resp = httpClient.send(req, HttpResponse.BodyHandlers.ofInputStream());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException(
+                    "Interrupted while contacting Cortex API at " + CortexConstants.DOWNLOAD_LINK_PATH, e);
+        }
+
+        int status = resp.statusCode();
+        try (InputStream in = resp.body()) {
             if (status < 200 || status >= 300) {
-                String body = readStream(conn.getErrorStream());
+                String body = readStream(in);
                 throw new IOException("HTTP " + status + " from " + CortexConstants.DOWNLOAD_LINK_PATH
-                        + (isBlank(body) ? "" : (": " + truncate(body))));
+                        + (Util.fixEmptyAndTrim(body) == null ? "" : (": " + truncate(body))));
             }
 
-            String body = readStream(conn.getInputStream());
+            String body = readStream(in);
             DownloadLink link = GSON.fromJson(body, DownloadLink.class);
             if (link == null) {
                 throw new IOException("empty/invalid JSON from " + CortexConstants.DOWNLOAD_LINK_PATH);
             }
             return link;
-        } finally {
-            conn.disconnect();
         }
     }
 
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
-
-    /** @return the os value for the JVM currently running this code. */
-    public static String currentOs() {
-        String os = System.getProperty("os.name", "").toLowerCase();
-        if (os.contains("win")) {
-            return CortexConstants.OS_WINDOWS;
-        }
-        if (os.contains("mac") || os.contains("darwin")) {
-            return CortexConstants.OS_DARWIN;
-        }
-        return CortexConstants.OS_LINUX;
-    }
-
-    /** @return the architecture value for the JVM currently running this code. */
-    public static String currentArch() {
-        String arch = System.getProperty("os.arch", "").toLowerCase();
-        if (arch.contains("aarch64") || arch.contains("arm64")) {
-            return CortexConstants.ARCH_ARM64;
-        }
-        return CortexConstants.ARCH_AMD64;
-    }
 
     private static String stripTrailingSlash(String s) {
         if (s == null) {
@@ -152,7 +164,7 @@ public class CortexCliApi {
     }
 
     private static String enc(String s) {
-        return URLEncoder.encode(s == null ? "" : s, StandardCharsets.UTF_8);
+        return URLEncoder.encode(Util.fixNull(s), StandardCharsets.UTF_8);
     }
 
     /**
@@ -175,10 +187,6 @@ public class CortexCliApi {
             total += toWrite;
         }
         return buffer.toString(StandardCharsets.UTF_8);
-    }
-
-    private static boolean isBlank(String s) {
-        return s == null || s.trim().isEmpty();
     }
 
     private static String truncate(String s) {

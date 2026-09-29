@@ -2,6 +2,7 @@ package org.jenkinsci.plugins.cortexcloud.shared;
 
 import com.google.gson.annotations.SerializedName;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import hudson.Util;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
@@ -115,7 +116,7 @@ public class CortexScanResult implements Serializable {
     }
 
     public String getConsoleUrl() {
-        return consoleUrl == null ? "" : consoleUrl;
+        return Util.fixNull(consoleUrl);
     }
 
     /** @return true when every result entity passed policy (used as a parser-side cross-check of the exit code). */
@@ -161,7 +162,7 @@ public class CortexScanResult implements Serializable {
         }
 
         public String getErr() {
-            return err == null ? "" : err;
+            return Util.fixNull(err);
         }
 
         public boolean getPass() {
@@ -210,7 +211,7 @@ public class CortexScanResult implements Serializable {
             private ScanType type;
 
             public String getId() {
-                return id == null ? "" : id;
+                return Util.fixNull(id);
             }
 
             public Date getScanTime() {
@@ -218,7 +219,7 @@ public class CortexScanResult implements Serializable {
             }
 
             public String getHostname() {
-                return hostname == null ? "" : hostname;
+                return Util.fixNull(hostname);
             }
 
             public RepoTag getRepoTag() {

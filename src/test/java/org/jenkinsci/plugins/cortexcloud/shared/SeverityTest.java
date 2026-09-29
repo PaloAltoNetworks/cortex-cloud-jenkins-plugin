@@ -45,6 +45,15 @@ class SeverityTest {
     }
 
     @Test
+    void displayNamesAreDefined() {
+        assertEquals("None (use CLI exit code only)", Severity.NONE.getDisplayName());
+        assertEquals("Low or higher", Severity.LOW.getDisplayName());
+        assertEquals("Medium or higher", Severity.MEDIUM.getDisplayName());
+        assertEquals("High or higher", Severity.HIGH.getDisplayName());
+        assertEquals("Critical only", Severity.CRITICAL.getDisplayName());
+    }
+
+    @Test
     void noneThresholdNeverBreaches() {
         assertFalse(Severity.CRITICAL.meetsOrExceeds(Severity.NONE));
         assertFalse(Severity.LOW.meetsOrExceeds(Severity.NONE));

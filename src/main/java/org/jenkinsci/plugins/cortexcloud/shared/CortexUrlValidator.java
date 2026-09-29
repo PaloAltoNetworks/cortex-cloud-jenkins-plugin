@@ -40,7 +40,7 @@ public final class CortexUrlValidator {
      * @return the Result describing why the URL is or is not acceptable
      */
     public static Result validate(String value) {
-        if (value == null || value.trim().isEmpty()) {
+        if (value == null || value.isBlank()) {
             return Result.BLANK;
         }
         String trimmed = value.trim();

@@ -8,10 +8,10 @@
     <b>Cortex Cloud Scan:</b>
     <j:choose>
       <j:when test="${it.passed}">
-        <span style="color: #1a7f37;">PASSED</span>
+        <span style="color: var(--success-color);">PASSED</span>
       </j:when>
       <j:otherwise>
-        <span style="color: #cf222e;">${it.statusLabel}</span>
+        <span style="color: var(--error-color);">${it.statusLabel}</span>
       </j:otherwise>
     </j:choose>
     &#160;&#8212;&#160;

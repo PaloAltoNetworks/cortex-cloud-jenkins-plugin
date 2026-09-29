@@ -12,10 +12,10 @@ import org.kohsuke.stapler.DataBoundSetter;
 /**
  * Common base for Cortex Cloud build steps.
  *
- * Mirrors the legacy plugin's AbstractBuildScanner: it is a Builder implementing
- * SimpleBuildStep so the same step works in both freestyle jobs and Pipeline.
- * Shared, optional settings live here; concrete subclasses (e.g.
- * ImageBuildScanner) add target-specific fields and implement perform.
+ * <p>{@link ImageBuildScanner} is currently the only concrete step. Additional scan steps are
+ * planned, and they will share the options defined here (policy-violation gating, handling of
+ * unparseable results, timeout) and the environment-expansion and abort helpers. The base class
+ * keeps that behaviour consistent across steps.
  */
 public abstract class AbstractBuildScanner extends Builder implements SimpleBuildStep {
 

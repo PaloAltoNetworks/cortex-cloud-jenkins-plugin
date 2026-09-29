@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.cortexcloud.scanner;
 
+import hudson.Util;
 import java.io.Serializable;
 import org.jenkinsci.plugins.cortexcloud.shared.CortexConstants;
 import org.jenkinsci.plugins.cortexcloud.shared.CortexScanResult;
@@ -23,7 +24,7 @@ public class ScanOutcome implements Serializable {
     public ScanOutcome(int exitCode, CortexScanResult result, String rawOutput) {
         this.exitCode = exitCode;
         this.result = result;
-        this.rawOutput = rawOutput == null ? "" : rawOutput;
+        this.rawOutput = Util.fixNull(rawOutput);
     }
 
     public int getExitCode() {

@@ -1,13 +1,19 @@
 package org.jenkinsci.plugins.cortexcloud.scanner;
 
 import hudson.FilePath;
+import hudson.ProxyConfiguration;
+import hudson.Util;
 import hudson.model.TaskListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -65,11 +71,24 @@ public class CliProvisioner {
     private final CortexCliApi api;
     private final TaskListener listener;
     private final boolean debug;
+    private final HttpClient httpClient;
 
     public CliProvisioner(CortexCliApi api, TaskListener listener, boolean debug) {
+        this(api, listener, debug, defaultHttpClient());
+    }
+
+    CliProvisioner(CortexCliApi api, TaskListener listener, boolean debug, HttpClient httpClient) {
         this.api = api;
         this.listener = listener;
         this.debug = debug;
+        this.httpClient = httpClient;
+    }
+
+    private static HttpClient defaultHttpClient() {
+        return ProxyConfiguration.newHttpClientBuilder()
+                .connectTimeout(Duration.ofMillis(DOWNLOAD_CONNECT_TIMEOUT_MS))
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build();
     }
 
     /**
@@ -84,8 +103,9 @@ public class CliProvisioner {
             throws IOException, InterruptedException {
 
         // 1) Explicit override wins.
-        if (overridePath != null && !overridePath.trim().isEmpty()) {
-            FilePath candidate = new FilePath(workspace.getChannel(), overridePath.trim());
+        String trimmedOverride = Util.fixEmptyAndTrim(overridePath);
+        if (trimmedOverride != null) {
+            FilePath candidate = new FilePath(workspace.getChannel(), trimmedOverride);
             if (candidate.exists()) {
                 log("Using pre-installed Cortex CLI: " + candidate.getRemote());
                 return candidate.getRemote();
@@ -94,12 +114,12 @@ public class CliProvisioner {
         }
 
         // Determine the agent's OS/arch in a single remote round-trip.
-        ProbedPlatform platform = probePlatform(workspace);
-        String os = platform.os;
-        String arch = platform.arch;
+        Platform platform = workspace.act(new OsArchProbe());
+        String os = platform.os();
+        String arch = platform.arch();
 
         CortexCliApi.DownloadLink link = api.getDownloadLink(os, arch);
-        if (link == null || isBlank(link.getSignedUrl())) {
+        if (link == null || Util.fixEmptyAndTrim(link.getSignedUrl()) == null) {
             throw new IOException("tenant did not return a download link for " + os + "/" + arch);
         }
 
@@ -109,7 +129,9 @@ public class CliProvisioner {
         FilePath cached = cacheDir.child(binaryNameFor(os));
 
         // 2) Reuse a valid cached binary (no lock needed for a read-only check).
-        if (cached.exists() && !isBlank(link.getChecksum()) && digestMatches(cached, link.getChecksum())) {
+        if (cached.exists()
+                && Util.fixEmptyAndTrim(link.getChecksum()) != null
+                && digestMatches(cached, link.getChecksum())) {
             log("Reusing cached Cortex CLI: " + cached.getRemote());
             setUnixExecutableBit(cached, os);
             return cached.getRemote();
@@ -123,7 +145,9 @@ public class CliProvisioner {
         try {
             // Re-check inside the lock: another build may have provisioned it
             // while we were waiting.
-            if (cached.exists() && !isBlank(link.getChecksum()) && digestMatches(cached, link.getChecksum())) {
+            if (cached.exists()
+                    && Util.fixEmptyAndTrim(link.getChecksum()) != null
+                    && digestMatches(cached, link.getChecksum())) {
                 log("Reusing cached Cortex CLI (provisioned by a concurrent build): " + cached.getRemote());
                 setUnixExecutableBit(cached, os);
                 return cached.getRemote();
@@ -134,7 +158,7 @@ public class CliProvisioner {
             //    binary must never run. A missing or unrecognized checksum is treated
             //    as a hard error, not a warning.
             String expected = link.getChecksum();
-            if (isBlank(expected)) {
+            if (Util.fixEmptyAndTrim(expected) == null) {
                 throw new IOException("Refusing to run the Cortex CLI: the tenant did not provide a checksum, "
                         + "so the downloaded binary cannot be integrity-verified.");
             }
@@ -179,7 +203,6 @@ public class CliProvisioner {
             releaseLock(lock);
         }
     }
-
 
     /**
      * Acquires an exclusive provisioning lock by creating a lock directory. A
@@ -271,30 +294,36 @@ public class CliProvisioner {
      * download link is rejected (fail closed).
      */
     private void download(String signedUrl, FilePath dest) throws IOException, InterruptedException {
-        URL url = new URL(signedUrl);
-        String protocol = url.getProtocol();
-        if (protocol == null || !"https".equalsIgnoreCase(protocol)) {
-            throw new IOException("Refusing to download the Cortex CLI over a non-HTTPS URL (scheme: " + protocol
+        final URI uri;
+        try {
+            uri = new URI(signedUrl);
+        } catch (URISyntaxException e) {
+            throw new IOException("Malformed download URL: " + signedUrl, e);
+        }
+        String scheme = uri.getScheme();
+        if (scheme == null || !"https".equalsIgnoreCase(scheme)) {
+            throw new IOException("Refusing to download the Cortex CLI over a non-HTTPS URL (scheme: " + scheme
                     + "); the download link must use HTTPS.");
         }
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        try {
-            conn.setConnectTimeout(DOWNLOAD_CONNECT_TIMEOUT_MS);
-            conn.setReadTimeout(DOWNLOAD_READ_TIMEOUT_MS);
-            int status = conn.getResponseCode();
-            if (status < 200 || status >= 300) {
-                throw new IOException("HTTP " + status + " downloading Cortex CLI");
+
+        HttpRequest req = ProxyConfiguration.newHttpRequestBuilder(uri)
+                .GET()
+                .timeout(Duration.ofMillis(DOWNLOAD_READ_TIMEOUT_MS))
+                .build();
+
+        HttpResponse<InputStream> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofInputStream());
+        int status = resp.statusCode();
+        if (status < 200 || status >= 300) {
+            throw new IOException("HTTP " + status + " downloading Cortex CLI");
+        }
+
+        try (InputStream in = resp.body();
+                OutputStream out = dest.write()) {
+            byte[] buf = new byte[STREAM_BUFFER_BYTES];
+            int n;
+            while ((n = in.read(buf)) != -1) {
+                out.write(buf, 0, n);
             }
-            try (InputStream in = conn.getInputStream();
-                    OutputStream out = dest.write()) {
-                byte[] buf = new byte[STREAM_BUFFER_BYTES];
-                int n;
-                while ((n = in.read(buf)) != -1) {
-                    out.write(buf, 0, n);
-                }
-            }
-        } finally {
-            conn.disconnect();
         }
     }
 
@@ -366,19 +395,13 @@ public class CliProvisioner {
     }
 
     /**
-     * Probes the agent once and returns its normalized OS and architecture. A
-     * single remote round-trip covers both values.
-     */
-    private static ProbedPlatform probePlatform(FilePath workspace) throws IOException, InterruptedException {
-        OsArchProbe.Result raw = workspace.act(new OsArchProbe());
-        return new ProbedPlatform(normalizeOs(raw.os), normalizeArch(raw.arch));
-    }
-
-    /**
      * Normalizes a raw os.name value to a Cortex OS constant. macOS is checked
      * before Windows because the string "darwin" contains the substring "win".
+     *
+     * Throws an IOException on unsupported platforms so agents fail fast with a
+     * clear diagnostic rather than failing later on a bad binary.
      */
-    static String normalizeOs(String rawOsName) {
+    static String normalizeOs(String rawOsName) throws IOException {
         String name = rawOsName == null ? "" : rawOsName.toLowerCase(Locale.ROOT);
         if (name.contains("mac") || name.contains("darwin")) {
             return CortexConstants.OS_DARWIN;
@@ -386,16 +409,30 @@ public class CliProvisioner {
         if (name.contains("windows")) {
             return CortexConstants.OS_WINDOWS;
         }
-        return CortexConstants.OS_LINUX;
+        if (name.contains("linux")) {
+            return CortexConstants.OS_LINUX;
+        }
+        throw new IOException("Unsupported agent OS \"" + rawOsName + "\". "
+                + "The Cortex CLI is available for linux, darwin and windows on amd64 and arm64. "
+                + "To use a CLI binary you installed yourself, set \"CLI path\" in the global configuration.");
     }
 
-    /** Normalizes a raw os.arch value to a Cortex architecture constant. */
-    static String normalizeArch(String rawArch) {
+    /**
+     * Normalizes a raw os.arch value to a Cortex architecture constant.
+     *
+     * Throws an IOException on unsupported architectures so agents fail fast.
+     */
+    static String normalizeArch(String rawArch) throws IOException {
         String arch = rawArch == null ? "" : rawArch.toLowerCase(Locale.ROOT);
         if (arch.contains("aarch64") || arch.contains("arm64")) {
             return CortexConstants.ARCH_ARM64;
         }
-        return CortexConstants.ARCH_AMD64;
+        if (arch.contains("amd64") || arch.contains("x86_64")) {
+            return CortexConstants.ARCH_AMD64;
+        }
+        throw new IOException("Unsupported agent architecture \"" + rawArch + "\". "
+                + "The Cortex CLI is available for linux, darwin and windows on amd64 and arm64. "
+                + "To use a CLI binary you installed yourself, set \"CLI path\" in the global configuration.");
     }
 
     private void log(String msg) {
@@ -404,44 +441,31 @@ public class CliProvisioner {
         }
     }
 
-    private static boolean isBlank(String s) {
-        return s == null || s.trim().isEmpty();
-    }
-
     /** The agent's normalized OS and architecture, resolved in a single probe. */
-    static final class ProbedPlatform {
-        final String os;
-        final String arch;
-
-        ProbedPlatform(String os, String arch) {
-            this.os = os;
-            this.arch = arch;
-        }
+    static record Platform(String os, String arch) implements java.io.Serializable {
+        private static final long serialVersionUID = 1L;
     }
 
     /**
      * A FilePath.FileCallable that reports the agent JVM's OS/arch. Runs on the
      * node where the workspace lives (controller or remote agent).
      */
-    static class OsArchProbe extends jenkins.MasterToSlaveFileCallable<OsArchProbe.Result> {
+    static class OsArchProbe extends jenkins.MasterToSlaveFileCallable<Platform> {
         private static final long serialVersionUID = 1L;
 
-        Result invokeResult() {
-            Result r = new Result();
-            r.os = System.getProperty("os.name", "");
-            r.arch = System.getProperty("os.arch", "");
-            return r;
-        }
-
         @Override
-        public Result invoke(java.io.File f, hudson.remoting.VirtualChannel channel) {
-            return invokeResult();
-        }
-
-        static class Result implements java.io.Serializable {
-            private static final long serialVersionUID = 1L;
-            String os = "";
-            String arch = "";
+        public Platform invoke(java.io.File f, hudson.remoting.VirtualChannel channel) throws IOException {
+            String rawOs = System.getProperty("os.name", "");
+            String rawArch = System.getProperty("os.arch", "");
+            try {
+                return new Platform(normalizeOs(rawOs), normalizeArch(rawArch));
+            } catch (IOException e) {
+                throw new IOException(
+                        "Unsupported agent platform \"" + rawOs + "/" + rawArch + "\". "
+                                + "The Cortex CLI is available for linux, darwin and windows on amd64 and arm64. "
+                                + "To use a CLI binary you installed yourself, set \"CLI path\" in the global configuration.",
+                        e);
+            }
         }
     }
 }

@@ -54,7 +54,7 @@ public final class ScanOutputParser {
      * @return a parsed CortexScanResult, or null if none could be extracted
      */
     public static CortexScanResult parse(String output) {
-        if (output == null || output.trim().isEmpty()) {
+        if (output == null || output.isBlank()) {
             return null;
         }
 

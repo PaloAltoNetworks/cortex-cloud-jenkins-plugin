@@ -3,6 +3,7 @@ package org.jenkinsci.plugins.cortexcloud.scanner;
 import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.Launcher;
+import hudson.Util;
 import hudson.model.Node;
 import hudson.model.Run;
 import hudson.model.TaskListener;
@@ -121,9 +122,9 @@ public abstract class Scanner {
      */
     private EnvVars buildScanEnvironment() throws IOException, InterruptedException {
         EnvVars env = run.getEnvironment(listener);
-        env.put(CortexConstants.ENV_API_BASE_URL, nullToEmpty(config.getApiBaseUrl()));
-        env.put(CortexConstants.ENV_API_KEY, nullToEmpty(config.getApiKeyPlainText()));
-        env.put(CortexConstants.ENV_API_KEY_ID, nullToEmpty(config.getApiKeyId()));
+        env.put(CortexConstants.ENV_API_BASE_URL, Util.fixNull(config.getApiBaseUrl()));
+        env.put(CortexConstants.ENV_API_KEY, Util.fixNull(config.getApiKeyPlainText()));
+        env.put(CortexConstants.ENV_API_KEY_ID, Util.fixNull(config.getApiKeyId()));
         return env;
     }
 
@@ -179,9 +180,9 @@ public abstract class Scanner {
 
     private void requireConfig() throws IOException {
         if (config == null
-                || isBlank(config.getApiBaseUrl())
-                || isBlank(config.getApiKeyPlainText())
-                || isBlank(config.getApiKeyId())) {
+                || Util.fixEmptyAndTrim(config.getApiBaseUrl()) == null
+                || Util.fixEmptyAndTrim(config.getApiKeyPlainText()) == null
+                || Util.fixEmptyAndTrim(config.getApiKeyId()) == null) {
             throw new IOException("Cortex Cloud global configuration is incomplete. "
                     + "Set the API base URL, API key, and API key ID under Manage Jenkins -> System.");
         }
@@ -209,13 +210,5 @@ public abstract class Scanner {
 
     protected void log(String msg) {
         listener.getLogger().println("[Cortex] " + msg);
-    }
-
-    private static String nullToEmpty(String s) {
-        return s == null ? "" : s;
-    }
-
-    private static boolean isBlank(String s) {
-        return s == null || s.trim().isEmpty();
     }
 }

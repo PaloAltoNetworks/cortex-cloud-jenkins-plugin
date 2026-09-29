@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import hudson.model.FreeStyleProject;
 import hudson.util.FormValidation;
+import org.jenkinsci.plugins.cortexcloud.shared.Severity;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
@@ -35,7 +36,7 @@ class ImageBuildScannerTest {
         step.setTimeout(120);
         step.setFailBuildOnPolicyViolation(false);
         step.setFailOnUnparseableResults(false);
-        step.setSeverityThreshold("HIGH");
+        step.setSeverityThreshold(Severity.HIGH);
         step.setSource("jenkins");
         step.setUploadMode("all");
         p.getBuildersList().add(step);
@@ -51,16 +52,15 @@ class ImageBuildScannerTest {
         assertEquals(120, reloaded.getTimeout());
         assertFalse(reloaded.isFailBuildOnPolicyViolation());
         assertFalse(reloaded.isFailOnUnparseableResults());
-        assertEquals("HIGH", reloaded.getSeverityThreshold());
+        assertEquals(Severity.HIGH, reloaded.getSeverityThreshold());
         assertEquals("jenkins", reloaded.getSource());
         assertEquals("all", reloaded.getUploadMode());
     }
 
     @Test
-    void severityThresholdItemsAreOffered(JenkinsRule j) {
-        ImageBuildScanner.DescriptorImpl d = j.jenkins.getDescriptorByType(ImageBuildScanner.DescriptorImpl.class);
-        // None, Low, Medium, High, Critical
-        assertEquals(5, d.doFillSeverityThresholdItems(null).size());
+    void defaultSeverityThresholdIsNone() {
+        ImageBuildScanner step = new ImageBuildScanner("myrepo/app:1.0");
+        assertEquals(Severity.NONE, step.getSeverityThreshold());
     }
 
     @Test

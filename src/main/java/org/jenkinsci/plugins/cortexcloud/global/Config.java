@@ -1,9 +1,10 @@
 package org.jenkinsci.plugins.cortexcloud.global;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
+import hudson.Util;
 import hudson.util.FormValidation;
 import hudson.util.Secret;
-import javax.annotation.CheckForNull;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.cortexcloud.api.CortexCliApi;
@@ -98,7 +99,7 @@ public final class Config extends GlobalConfiguration {
 
     @DataBoundSetter
     public void setApiBaseUrl(String apiBaseUrl) {
-        this.apiBaseUrl = trimToNull(apiBaseUrl);
+        this.apiBaseUrl = Util.fixEmptyAndTrim(apiBaseUrl);
         save();
     }
 
@@ -110,13 +111,13 @@ public final class Config extends GlobalConfiguration {
 
     @DataBoundSetter
     public void setApiKeyId(String apiKeyId) {
-        this.apiKeyId = trimToNull(apiKeyId);
+        this.apiKeyId = Util.fixEmptyAndTrim(apiKeyId);
         save();
     }
 
     @DataBoundSetter
     public void setCliPath(String cliPath) {
-        this.cliPath = trimToNull(cliPath);
+        this.cliPath = Util.fixEmptyAndTrim(cliPath);
         save();
     }
 
@@ -124,14 +125,6 @@ public final class Config extends GlobalConfiguration {
     public void setDebug(boolean debug) {
         this.debug = debug;
         save();
-    }
-
-    private static String trimToNull(String s) {
-        if (s == null) {
-            return null;
-        }
-        String t = s.trim();
-        return t.isEmpty() ? null : t;
     }
 
     // ---------------------------------------------------------------------
@@ -166,7 +159,7 @@ public final class Config extends GlobalConfiguration {
     @POST
     public FormValidation doCheckApiKey(@QueryParameter String value) {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
-        if (trimToNull(value) == null) {
+        if (Util.fixEmptyAndTrim(value) == null) {
             return FormValidation.error("Please set the API key");
         }
         return FormValidation.ok();
@@ -175,7 +168,7 @@ public final class Config extends GlobalConfiguration {
     @POST
     public FormValidation doCheckApiKeyId(@QueryParameter String value) {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
-        if (trimToNull(value) == null) {
+        if (Util.fixEmptyAndTrim(value) == null) {
             return FormValidation.error("Please set the API key ID");
         }
         if (!value.trim().matches("\\d+")) {
@@ -202,10 +195,10 @@ public final class Config extends GlobalConfiguration {
         if (baseUrlValidation.kind != FormValidation.Kind.OK) {
             return baseUrlValidation;
         }
-        if (trimToNull(apiKey) == null) {
+        if (Util.fixEmptyAndTrim(apiKey) == null) {
             return FormValidation.error("API key is required");
         }
-        if (trimToNull(apiKeyId) == null) {
+        if (Util.fixEmptyAndTrim(apiKeyId) == null) {
             return FormValidation.error("API key ID is required");
         }
 

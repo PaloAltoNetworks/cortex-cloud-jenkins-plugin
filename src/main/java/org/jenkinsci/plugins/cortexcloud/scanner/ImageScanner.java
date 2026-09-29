@@ -2,6 +2,7 @@ package org.jenkinsci.plugins.cortexcloud.scanner;
 
 import hudson.FilePath;
 import hudson.Launcher;
+import hudson.Util;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import java.io.IOException;
@@ -54,13 +55,13 @@ public class ImageScanner extends Scanner {
 
     @Override
     protected List<String> buildCommand(String cliPath) throws IOException, InterruptedException {
-        if (image == null || image.trim().isEmpty()) {
+        if (Util.fixEmptyAndTrim(image) == null) {
             throw new IOException("image reference is required");
         }
         return new CortexCommandBuilder(cliPath)
                 // Scanning an image reference (not a tar archive).
                 .archive(false)
-                .name(scanName != null && !scanName.trim().isEmpty() ? scanName : image)
+                .name(Util.fixEmptyAndTrim(scanName) != null ? scanName : image)
                 .dockerHost(dockerHost)
                 .ciPipelineId(ciPipelineId)
                 .ciBuildId(ciBuildId)

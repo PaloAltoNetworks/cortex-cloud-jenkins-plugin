@@ -43,7 +43,7 @@
 
     <f:entry title="Fail build on severity" field="severityThreshold"
              description="Fail the build if any vulnerability or compliance finding (malware / secrets) is at or above this severity, regardless of the tenant policy / CLI exit code. Requires JSON findings (default output). 'None' keeps exit-code-only gating.">
-      <f:select/>
+      <f:enum>${it.displayName}</f:enum>
     </f:entry>
 
     <f:entry title="Fail build if results can't be parsed" field="failOnUnparseableResults"

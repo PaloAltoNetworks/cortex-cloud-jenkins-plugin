@@ -15,11 +15,21 @@ import java.util.Locale;
  * threshold gating.
  */
 public enum Severity {
-    NONE,
-    LOW,
-    MEDIUM,
-    HIGH,
-    CRITICAL;
+    NONE("None (use CLI exit code only)"),
+    LOW("Low or higher"),
+    MEDIUM("Medium or higher"),
+    HIGH("High or higher"),
+    CRITICAL("Critical only");
+
+    private final String displayName;
+
+    Severity(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
 
     /**
      * Parses a CLI severity string (e.g. "high", "CRITICAL") into a Severity.

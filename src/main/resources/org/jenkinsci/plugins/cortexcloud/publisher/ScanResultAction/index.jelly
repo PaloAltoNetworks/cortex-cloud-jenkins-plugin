@@ -20,10 +20,10 @@
             <td>
               <j:choose>
                 <j:when test="${it.passed}">
-                  <span style="color: #1a7f37; font-weight: bold;">PASSED</span>
+                  <span style="color: var(--success-color); font-weight: bold;">PASSED</span>
                 </j:when>
                 <j:otherwise>
-                  <span style="color: #cf222e; font-weight: bold;">${it.statusLabel}</span>
+                  <span style="color: var(--error-color); font-weight: bold;">${it.statusLabel}</span>
                 </j:otherwise>
               </j:choose>
             </td>
@@ -46,10 +46,10 @@
 
           <div style="margin-bottom: 1em;">
             <b>Severity breakdown:</b>
-            <span style="color: #cf222e;">Critical ${it.criticalCount}</span> &#160;
-            <span style="color: #bc4c00;">High ${it.highCount}</span> &#160;
-            <span style="color: #9a6700;">Medium ${it.mediumCount}</span> &#160;
-            <span style="color: #57606a;">Low ${it.lowCount}</span>
+            <span style="color: var(--error-color);">Critical ${it.criticalCount}</span> &#160;
+            <span style="color: var(--orange);">High ${it.highCount}</span> &#160;
+            <span style="color: var(--warning-color);">Medium ${it.mediumCount}</span> &#160;
+            <span style="color: var(--text-color-secondary);">Low ${it.lowCount}</span>
           </div>
 
           <h2>Vulnerabilities (${it.vulnerabilityCount})</h2>

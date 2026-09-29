@@ -31,8 +31,6 @@ artifacts are promoted or deployed.
 
 Before you begin, make sure you have:
 
-- **Jenkins** 2.479.3 or newer (built against the 2.479.x LTS baseline).
-- **Java 17 or newer** on the Jenkins controller.
 - A **Cortex Cloud tenant** with API credentials — an **API base URL**, **API key**, and
   **API key ID**.
 - **Docker available on the build agent/node** that runs the scan, so the CLI can access the
@@ -40,23 +38,7 @@ Before you begin, make sure you have:
 
 ## Getting started
 
-### 1. Install the plugin
-
-**From the Jenkins Plugin Manager** (recommended):
-
-1. Go to **Manage Jenkins → Plugins → Available plugins**.
-2. Search for **Cortex Cloud**, select it, and install.
-3. Restart Jenkins if prompted.
-
-**From a `.hpi` file** (manual install):
-
-1. Obtain the `cortex-cloud.hpi` file — download it from this repository's
-   **Deploy → Releases** page, or [build it from source](#building-from-source).
-2. Go to **Manage Jenkins → Plugins → Advanced settings**.
-3. Under **Deploy Plugin**, upload the `.hpi` file and deploy it.
-4. Restart Jenkins if prompted.
-
-### 2. Configure your Cortex Cloud connection
+### 1. Configure your Cortex Cloud connection
 
 Configure the plugin globally under **Manage Jenkins → System → Cortex Cloud**:
 
@@ -73,7 +55,14 @@ Configure the plugin globally under **Manage Jenkins → System → Cortex Cloud
 
 Use the **Test Connection** button to verify the base URL and credentials before saving.
 
-### 3. Add a scan to your job
+#### Proxy
+
+- Calls from the controller to the Cortex API and CLI download use the Jenkins proxy settings
+  (**Manage Jenkins → System → HTTP Proxy Configuration**).
+- The Cortex CLI runs on the build agent and uses that agent's standard `HTTP_PROXY` /
+  `HTTPS_PROXY` environment variables. Set them on the node, or with `withEnv` in Pipeline.
+
+### 2. Add a scan to your job
 
 **Freestyle jobs:**
 
